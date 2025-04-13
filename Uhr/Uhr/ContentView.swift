@@ -1,70 +1,86 @@
 import SwiftUI
 import WebKit
 
+class ViewSizeObserver: ObservableObject {
+    @Published var size: CGSize = .zero
+}
+
 struct ContentView: View {
+    @StateObject private var sizeObserver = ViewSizeObserver()
+    
     var body: some View {
-        WebViewContainer()
-            .frame(width: 600, height: 600)
+        ZStack {
+            WebViewContainer(sizeObserver: sizeObserver)
+            Color.clear
+                .contentShape(Rectangle())
+                .allowsHitTesting(true)
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { _ in
+                            AppDelegate.shared?.startWindowDragging()
+                        }
+                )
+        }
+            .frame(minWidth: 300, maxWidth: .infinity, minHeight: 300, maxHeight: .infinity)
+            .background(
+                GeometryReader { geometry in
+                    Color.clear
+                        .preference(key: SizePreferenceKey.self, value: geometry.size)
+                        .onPreferenceChange(SizePreferenceKey.self) { newSize in
+                            sizeObserver.size = newSize
+                        }
+                }
+            )
+    }
+}
+
+struct SizePreferenceKey: PreferenceKey {
+    static var defaultValue: CGSize = .zero
+    static func reduce(value: inout CGSize, nextValue: () -> CGSize) {
+        value = nextValue()
     }
 }
 
 struct WebViewContainer: NSViewRepresentable {
+    @ObservedObject var sizeObserver: ViewSizeObserver
+    
     func makeNSView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
-        //configuration.preferences.javaScriptEnabled = true      "Decpricated
         
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.setValue(false, forKey: "drawsBackground")
+        webView.navigationDelegate = context.coordinator
         
-        // Debug-Ausgaben
-        print("Bundle path: \(Bundle.main.bundlePath)")
-        
-        if let htmlPath = Bundle.main.path(forResource: "index", ofType: "html") {
-            print("HTML path found: \(htmlPath)")
-            
-            if let htmlString = try? String(contentsOfFile: htmlPath, encoding: .utf8) {
-                print("HTML content loaded successfully")
-                
-                // Erstelle die baseURL für die Resources
-                let baseURL = Bundle.main.bundleURL.appendingPathComponent("Contents/Resources")
-                print("Base URL: \(baseURL)")
-                
-                // Überprüfe, ob die JavaScript-Datei existiert
-                if let jsPath = Bundle.main.path(forResource: "sbbUhr-1.3", ofType: "js") {
-                    print("JavaScript path: \(jsPath)")
-                    print("JavaScript file exists")
-                    
-                    // Lade die JavaScript-Datei
-                    if let jsContent = try? String(contentsOfFile: jsPath, encoding: .utf8) {
-                        print("JavaScript content loaded successfully")
-                        
-                        // Füge die JavaScript-Datei direkt in den HTML-String ein
-                        let modifiedHtml = htmlString.replacingOccurrences(
-                            of: "<script src=\"sbbUhr-1.3.js\"></script>",
-                            with: "<script>\(jsContent)</script>"
-                        )
-                        
-                        webView.loadHTMLString(modifiedHtml, baseURL: baseURL)
-                    } else {
-                        print("Failed to load JavaScript content")
-                    }
-                } else {
-                    print("JavaScript file not found in bundle")
-                }
-                
-                // Navigation Delegate für Debug-Informationen
-                webView.navigationDelegate = context.coordinator
-            } else {
-                print("Failed to load HTML content")
-            }
-        } else {
-            print("HTML file not found in bundle")
-        }
-        
+        loadContent(in: webView)
         return webView
     }
     
-    func updateNSView(_ nsView: WKWebView, context: Context) {}
+    func updateNSView(_ nsView: WKWebView, context: Context) {
+        // Lade den Inhalt neu, wenn sich die Größe ändert
+        if context.coordinator.lastSize != sizeObserver.size {
+            context.coordinator.lastSize = sizeObserver.size
+            loadContent(in: nsView)
+        }
+    }
+    
+    private func loadContent(in webView: WKWebView) {
+        if let htmlPath = Bundle.main.path(forResource: "index", ofType: "html") {
+            if let htmlString = try? String(contentsOfFile: htmlPath, encoding: .utf8) {
+                let baseURL = Bundle.main.bundleURL.appendingPathComponent("Contents/Resources")
+                
+                if let jsPath = Bundle.main.path(forResource: "sbbUhr-1.3", ofType: "js"),
+                   let jsContent = try? String(contentsOfFile: jsPath, encoding: .utf8) {
+                    
+                    let modifiedHtml = htmlString.replacingOccurrences(
+                        of: "<script src=\"sbbUhr-1.3.js\"></script>",
+                        with: "<script>\(jsContent)</script>"
+                    )
+                    
+                    webView.loadHTMLString(modifiedHtml, baseURL: baseURL)
+                }
+            }
+        }
+    }
     
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -72,6 +88,7 @@ struct WebViewContainer: NSViewRepresentable {
     
     class Coordinator: NSObject, WKNavigationDelegate {
         var parent: WebViewContainer
+        var lastSize: CGSize = .zero
         
         init(_ parent: WebViewContainer) {
             self.parent = parent
@@ -79,14 +96,6 @@ struct WebViewContainer: NSViewRepresentable {
         
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             print("WebView finished loading")
-            // Überprüfe JavaScript-Fehler
-            webView.evaluateJavaScript("console.log('JavaScript is running')") { (result, error) in
-                if let error = error {
-                    print("JavaScript error: \(error.localizedDescription)")
-                } else {
-                    print("JavaScript is running successfully")
-                }
-            }
         }
         
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
