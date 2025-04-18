@@ -1,5 +1,4 @@
 import SwiftUI
-import AppKit
 
 class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     static var shared: AppDelegate?
@@ -20,6 +19,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             window.delegate = self
             window.minSize = NSSize(width: 300, height: 300)
             window.styleMask.insert(.resizable)
+            window.tabbingMode = .disallowed
             
             // Setze initial den korrekten Hintergrund
             updateBackgroundColor(for: window)
@@ -74,6 +74,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
     
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        NSApplication.shared.terminate(self)
+        return true
+    }
+    
     func windowWillResize(_ sender: NSWindow, to frameSize: NSSize) -> NSSize {
         // Hole die Größe des Hauptbildschirms
         guard let screen = sender.screen ?? NSScreen.main else {
@@ -107,9 +112,13 @@ struct UhrApp: App {
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 600, height: 600)
+        .defaultPosition(.center)
         .windowResizability(.contentMinSize)
         .commands {
-            CommandGroup(replacing: .newItem) { }
+            CommandGroup(replacing: .newItem) { };
+            CommandGroup(replacing: .pasteboard) { };
+            CommandGroup(replacing: .undoRedo) { };
+            CommandGroup(replacing: .systemServices) { }
         }
         .handlesExternalEvents(matching: Set(arrayLiteral: "*"))
     }
