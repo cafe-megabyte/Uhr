@@ -1,7 +1,7 @@
 # Uhr
 A Mac version of the famous SBB Clock.
 
-<img src="https://github.com/user-attachments/assets/433274ed-18f0-4db7-b56a-b333cec93c40" alt="Uhr" width="335"/>
+<img src="https://github.com/user-attachments/assets/456ea08c-7089-493c-80fa-1a9eb7319b44" alt="Uhr" width="315"/>
 
 Coded by Cursor.
 
