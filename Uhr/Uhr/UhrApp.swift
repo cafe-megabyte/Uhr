@@ -21,6 +21,25 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             window.styleMask.insert(.resizable)
             window.tabbingMode = .disallowed
             
+            // Fenster transparent machen
+            window.isOpaque = false
+            window.hasShadow = false
+            window.backgroundColor = .clear
+            
+            // Titlebar transparent aber funktional machen
+            if let titlebarView = window.standardWindowButton(NSWindow.ButtonType.closeButton)?.superview?.superview {
+                titlebarView.isHidden = false
+                titlebarView.alphaValue = 0.0
+            }
+            
+            // Standardfensterbuttons verstecken aber funktional lassen
+            [NSWindow.ButtonType.closeButton, 
+             NSWindow.ButtonType.miniaturizeButton, 
+             NSWindow.ButtonType.zoomButton].forEach { buttonType in
+                window.standardWindowButton(buttonType)?.isHidden = false
+                window.standardWindowButton(buttonType)?.alphaValue = 0.0
+            }
+            
             // Setze initial den korrekten Hintergrund
             updateBackgroundColor(for: window)
             
@@ -51,8 +70,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private func updateBackgroundColor(for window: NSWindow) {
         if window.styleMask.contains(.fullScreen) {
             window.backgroundColor = .black
+            window.isOpaque = true
         } else {
-            window.backgroundColor = .windowBackgroundColor
+            window.backgroundColor = .clear
+            window.isOpaque = false
         }
     }
     
@@ -64,7 +85,36 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     
     @objc func windowDidExitFullScreen(_ notification: Notification) {
         if let window = notification.object as? NSWindow {
-            window.backgroundColor = .windowBackgroundColor
+            window.backgroundColor = .clear
+            window.isOpaque = false
+            window.hasShadow = false
+            
+            // Titlebar wieder unsichtbar machen
+            if let titlebarView = window.standardWindowButton(NSWindow.ButtonType.closeButton)?.superview?.superview {
+                titlebarView.alphaValue = 0.0
+            }
+            
+            // Fenstersteuerelemente wieder unsichtbar machen
+            [NSWindow.ButtonType.closeButton, 
+             NSWindow.ButtonType.miniaturizeButton, 
+             NSWindow.ButtonType.zoomButton].forEach { buttonType in
+                window.standardWindowButton(buttonType)?.alphaValue = 0.0
+            }
+            
+            // Fensterrahmen transparent machen
+            window.contentView?.wantsLayer = true
+            window.contentView?.layer?.cornerRadius = 0
+            window.titlebarAppearsTransparent = true
+            
+            // Erzwinge Neuzeichnen durch minimale Größenänderung
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                let currentFrame = window.frame
+                var newFrame = currentFrame
+                newFrame.size.width += 1
+                window.setFrame(newFrame, display: true)
+                newFrame.size.width -= 1
+                window.setFrame(newFrame, display: true)
+            }
         }
     }
     
@@ -85,20 +135,30 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             return frameSize
         }
         
-        // Bestimme die größere Seite für das quadratische Fenster
-        let maxDimension = max(frameSize.width, frameSize.height)
-        
         // Berechne die maximale erlaubte Größe (kleinere Dimension des Bildschirms)
         let maxAllowedSize = min(
             screen.visibleFrame.width,
             screen.visibleFrame.height
         )
         
+        // Wenn die Breite sich mehr verändert hat als die Höhe, nutze die Breite als Basis
+        // Ansonsten nutze die Höhe als Basis für die quadratische Form
+        let size: CGFloat
+        let currentSize = sender.frame.size
+        let widthDiff = abs(frameSize.width - currentSize.width)
+        let heightDiff = abs(frameSize.height - currentSize.height)
+        
+        if widthDiff > heightDiff {
+            size = frameSize.width
+        } else {
+            size = frameSize.height
+        }
+        
         // Stelle sicher, dass die Größe zwischen 300 und der maximalen Bildschirmgröße liegt
-        let size = min(max(maxDimension, 300), maxAllowedSize)
+        let clampedSize = min(max(size, 300), maxAllowedSize)
         
         // Verwende die gleiche Größe für Breite und Höhe (quadratisch)
-        return NSSize(width: size, height: size)
+        return NSSize(width: clampedSize, height: clampedSize)
     }
 }
 
