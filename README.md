@@ -9,4 +9,4 @@ Coded by Cursor.
 
 [Download](https://github.com/cafe-megabyte/Uhr/releases/latest)
 
-Web-App: [cafe-megabyte.de/uhr](cafe-megabyte.de/uhr)
+Web-App: [cafe-megabyte.de/uhr](https://www.cafe-megabyte.de/uhr/)
