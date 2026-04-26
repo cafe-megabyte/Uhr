@@ -123,7 +123,7 @@
        outline. Cap at the original values so large clocks don't gain a
        heavier shadow than designed. */
     CGFloat diameter = radius * 2.0;
-    self.layer.shadowRadius = MIN(diameter * 0.03, 12.0);
+    self.layer.shadowRadius = MIN(diameter * 0.03, 3.0);
     self.layer.shadowOffset = CGSizeMake(0, MAX(-diameter * 0.005, -2.0));
 }
 
