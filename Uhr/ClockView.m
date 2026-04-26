@@ -116,6 +116,15 @@
     CGPathRef path = CGPathCreateWithEllipseInRect(rect, NULL);
     self.layer.shadowPath = path;
     CGPathRelease(path);
+
+    /* Scale shadow with the clock: a fixed blur radius looks fine at default
+       size but, when the clock shrinks, the halo stays the same in points
+       and starts bleeding past the (square) window bounds, exposing its
+       outline. Cap at the original values so large clocks don't gain a
+       heavier shadow than designed. */
+    CGFloat diameter = radius * 2.0;
+    self.layer.shadowRadius = MIN(diameter * 0.03, 12.0);
+    self.layer.shadowOffset = CGSizeMake(0, MAX(-diameter * 0.005, -2.0));
 }
 
 #pragma mark - Background animation (fullscreen)
